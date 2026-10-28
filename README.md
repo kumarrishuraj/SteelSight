@@ -1,94 +1,77 @@
-# SteelSight - Steel Defect Detection
+# SteelSight
 
-This project fine-tunes a YOLOv8 object detection model to identify and localize various types of defects on steel surfaces. It was originally built on the dataset from the Kaggle "Severstal: Steel Defect Detection" competition.
+**AI-powered industrial steel surface inspection and defect segmentation.**
 
-## Project Structure
+SteelSight delivers real-time pixel-level defect segmentation on continuous rolled steel strip photographs, using a custom ResNet-18 U-Net deep convolutional neural network pre-trained on the Severstal steel defect dataset.
 
-```text
-steelsight/
-├── data/
-│   ├── images/
-│   │   ├── train/       # 70% of dataset (images)
-│   │   ├── val/         # 15% of dataset (images)
-│   │   └── test/        # 15% of dataset (images)
-│   ├── labels/          # Corresponding YOLO format labels (.txt files)
-│   ├── train_images/    # Original unzipped Kaggle images
-│   └── train.csv        # Original Kaggle RLE annotations
-├── docs/                # Evaluation & Latency benchmark reports
-├── notebooks/
-│   ├── verification_output/ # Output directory for verified bounding box images
-│   └── verify_labels.py     # Script to visually check labels
-├── src/
-│   ├── drift_monitor/
-│   │   └── drift_check.py   # Script to check for covariate drift in image brightness/contrast
-│   ├── eval/
-│   │   └── evaluate.py      # Script to compute mAP on the test split
-│   ├── export/
-│   │   ├── benchmark_latency.py # Script comparing PyTorch vs ONNX latency
-│   │   └── export_onnx.py       # Script exporting YOLOv8 model to ONNX format
-│   └── train/
-│       ├── prepare_dataset.py   # Preprocessing script: RLE to YOLO bounding boxes & split
-│       └── train_baseline.py    # Training script (YOLOv8 fine-tuning + MLflow)
-├── .gitignore           # Git ignore rules
-├── dataset.yaml         # YOLOv8 configuration for the dataset
-├── kaggle.json          # Kaggle API credentials (ignored in git)
-├── mlflow.db            # MLflow local SQLite tracking DB (ignored in git)
-├── README.md            # Project documentation (this file)
-└── requirements.txt     # Python dependencies
+---
+
+## System Overview
+
+- **Frontend**: React 18 + Vite, Lucide React icons, responsive industrial dark interface.
+- **Backend**: FastAPI with async multi-part payload validation and in-memory base64 response pipeline.
+- **Deep Learning**: PyTorch 2.13.0, torchvision, custom ResNet-18 U-Net architecture (`epoch: 18`, `best_loss: 0.01176`).
+- **Computer Vision**: OpenCV, Pillow, NumPy.
+
+---
+
+## Quickstart Instructions
+
+### 1. Launch the Backend API
+
+Open PowerShell, activate the virtual environment, and launch the Uvicorn server:
+
+```powershell
+cd E:\steelsight
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-## Setup & Workflow
+- API Base URL: `http://127.0.0.1:8000`
+- Interactive OpenAPI Docs: `http://127.0.0.1:8000/docs`
+- Health Endpoint: `http://127.0.0.1:8000/api/health`
+- Model Status: `http://127.0.0.1:8000/api/model-status`
 
-### 1. Environment & Dependencies
+### 2. Launch the Frontend Application
 
-Make sure you have Python installed and activate your virtual environment (e.g. `.venv`). Install requirements:
-```bash
-pip install -r requirements.txt
+Open a second PowerShell terminal:
+
+```powershell
+cd E:\steelsight\frontend
+npm run dev
 ```
 
-### 2. Prepare the Dataset
+- Web Application URL: `http://127.0.0.1:5173`
 
-Ensure `severstal-steel-defect-detection.zip` is downloaded (e.g. via Kaggle CLI) into the `data/` directory and unzipped. Then convert the RLE annotations to YOLO format and perform train/val/test splits:
-```bash
-python src/train/prepare_dataset.py
+---
+
+## Running the Automated Test Suite
+
+Run backend test cases (verifying endpoints, validation rules, and live model prediction):
+
+```powershell
+cd E:\steelsight
+.\.venv\Scripts\python.exe -m pytest backend/tests -v
 ```
 
-*Optional*: Visually verify the generated YOLO labels:
-```bash
-python notebooks/verify_labels.py
-```
-Check `notebooks/verification_output/` for the images with bounding boxes overlaid.
+Test production frontend compilation:
 
-### 3. Model Training
-
-Fine-tune the baseline YOLOv8n model on the preprocessed dataset. Logs and metrics will be tracked locally via MLflow (in `mlflow.db`):
-```bash
-python src/train/train_baseline.py
+```powershell
+cd E:\steelsight\frontend
+npm run build
 ```
 
-### 4. Evaluation
+---
 
-Evaluate the trained model on the `test` split to calculate Precision, Recall, and mAP metrics:
-```bash
-python src/eval/evaluate.py
-```
-Results are saved to `docs/baseline_results.md`.
+## API Documentation
 
-### 5. ONNX Export & Latency Benchmarking
+### `POST /api/predict`
+Accepts a multipart file upload (`.jpg`, `.png`, `.webp`, `.bmp` up to 15MB) and an optional detection threshold (`0.05` to `0.95`, default `0.50`).
 
-Export the trained model weights to the ONNX runtime format for faster CPU inference:
-```bash
-python src/export/export_onnx.py
-```
-Then, compare inference latencies between the original PyTorch model and the ONNX model:
-```bash
-python src/export/benchmark_latency.py
-```
-The comparison report is saved to `docs/latency_comparison.md`.
-
-### 6. Drift Monitoring
-
-Establish a baseline of image properties (brightness and contrast) from the training data, then check for covariate drift in any other folder (e.g. `val` or a new batch of data) using Population Stability Index (PSI):
-```bash
-python src/drift_monitor/drift_check.py --target data/images/val
-```
+Returns:
+- `original_image`: Base64 PNG of standardized 256×1600 input strip.
+- `overlay_image`: Multi-channel color-blended defect visualization.
+- `heatmap_image`: Combined confidence gradient map.
+- `masks`: 4 discrete binary mask images (Defect Classes 1–4).
+- `classes`: Array detailing per-class detected status, pixel count, and percentage surface area.
+- `any_defect_detected`: Boolean flag indicating presence of any defects.
