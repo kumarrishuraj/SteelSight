@@ -1,8 +1,11 @@
 import sys
 import io
+import os
 import base64
+import hashlib
+import urllib.request
 from pathlib import Path
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Optional
 
 import torch
 import cv2
@@ -17,6 +20,66 @@ if str(config.BASE_DIR) not in sys.path:
 
 from model.model import Unet
 
+def verify_file_sha256(filepath: Path, expected_hash: str) -> bool:
+    """Computes SHA-256 of a local file in chunks and compares with expected_hash."""
+    sha256 = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            sha256.update(chunk)
+    computed = sha256.hexdigest().lower()
+    return computed == expected_hash.lower()
+
+def ensure_model_checkpoint() -> Path:
+    """
+    Ensures model checkpoint exists at config.MODEL_PATH.
+    If absent and config.MODEL_URL is set, downloads it securely (with optional auth header)
+    and validates its SHA-256 checksum.
+    """
+    target_path = config.MODEL_PATH
+    if target_path.exists() and target_path.stat().st_size > 1000:
+        return target_path
+
+    if not config.MODEL_URL:
+        raise FileNotFoundError(
+            f"Model checkpoint not found at {target_path} and MODEL_URL is not configured. "
+            "Please provide a local checkpoint or set the MODEL_URL environment variable."
+        )
+
+    print(f"Model checkpoint not found locally. Initiating download from MODEL_URL...")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_download_path = target_path.with_suffix(".tmp")
+
+    req = urllib.request.Request(config.MODEL_URL)
+    req.add_header("User-Agent", "SteelSight-ModelLoader/1.0")
+    if config.MODEL_AUTH_TOKEN:
+        # Supports Bearer token (Hugging Face / private storage)
+        req.add_header("Authorization", f"Bearer {config.MODEL_AUTH_TOKEN}")
+
+    try:
+        with urllib.request.urlopen(req, timeout=180) as response, open(temp_download_path, "wb") as out_file:
+            block_size = 1024 * 1024
+            while True:
+                buffer = response.read(block_size)
+                if not buffer:
+                    break
+                out_file.write(buffer)
+
+        # Validate checksum if configured
+        if config.EXPECTED_MODEL_SHA256:
+            print("Verifying downloaded model SHA-256 checksum...")
+            if not verify_file_sha256(temp_download_path, config.EXPECTED_MODEL_SHA256):
+                temp_download_path.unlink(missing_ok=True)
+                raise ValueError("Downloaded checkpoint SHA-256 does not match expected checksum. File may be corrupted.")
+            print("Checksum verified successfully.")
+
+        temp_download_path.replace(target_path)
+        print(f"Model successfully downloaded and saved to {target_path}")
+        return target_path
+    except Exception as e:
+        if temp_download_path.exists():
+            temp_download_path.unlink(missing_ok=True)
+        raise RuntimeError(f"Failed downloading model checkpoint: {str(e)}") from e
+
 class ModelManager:
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -29,8 +92,7 @@ class ModelManager:
         if self.is_loaded:
             return
 
-        if not config.MODEL_PATH.exists():
-            raise FileNotFoundError(f"Model checkpoint not found at {config.MODEL_PATH}")
+        checkpoint_path = ensure_model_checkpoint()
 
         # Instantiate architecture
         net = Unet(
@@ -43,7 +105,7 @@ class ModelManager:
 
         # Load weights
         checkpoint = torch.load(
-            str(config.MODEL_PATH),
+            str(checkpoint_path),
             map_location=self.device,
             weights_only=False
         )

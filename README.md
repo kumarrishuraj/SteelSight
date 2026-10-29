@@ -6,6 +6,27 @@ SteelSight delivers real-time pixel-level defect segmentation on continuous roll
 
 ---
 
+## Interactive Streamlit Web Application
+
+Run the standalone Streamlit application locally:
+
+```powershell
+cd E:\steelsight
+.\.venv\Scripts\Activate.ps1
+streamlit run streamlit_app.py
+```
+
+### Streamlit Community Cloud Deployment
+- **Repository:** `https://github.com/kumarrishuraj/SteelSight`
+- **Branch:** `main`
+- **Main file path:** `streamlit_app.py`
+- **App Secrets (Optional for external weights):**
+  - `MODEL_URL`: Direct HTTPS link to `model.pth`
+  - `EXPECTED_MODEL_SHA256`: `076f04466dd37ae0b6e9a9e4bd61810921a9f92996b04ef5c966d827b9eaefe8`
+
+
+---
+
 ## System Overview
 
 - **Frontend**: React 18 + Vite, Lucide React icons, responsive industrial dark interface.
