@@ -21,14 +21,14 @@ BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-# Bridge Streamlit Cloud Secrets to Environment Variables if configured
+# Bridge Streamlit Cloud Secrets to Environment Variables before importing backend modules
 try:
     if hasattr(st, "secrets"):
-        for secret_key in ["MODEL_URL", "MODEL_AUTH_TOKEN", "EXPECTED_MODEL_SHA256"]:
-            if secret_key in st.secrets and not os.getenv(secret_key):
-                os.environ[secret_key] = str(st.secrets[secret_key])
+        for secret_key in ["MODEL_URL", "MODEL_AUTH_TOKEN", "EXPECTED_MODEL_SHA256", "MODEL_PATH"]:
+            if secret_key in st.secrets and str(st.secrets[secret_key]).strip():
+                os.environ[secret_key] = str(st.secrets[secret_key]).strip()
 except Exception:
-    # No secrets file locally; environment variables or local paths will be used
+    # No secrets file locally; environment variables or defaults will be used
     pass
 
 from backend import config
