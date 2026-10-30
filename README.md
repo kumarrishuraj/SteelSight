@@ -6,7 +6,7 @@ SteelSight delivers real-time pixel-level defect segmentation on continuous roll
 
 ---
 
-## Interactive Streamlit Web Application
+## Interactive Streamlit Web Application - https://steelsight-euz7hu4qudbz6ydybfkxmf.streamlit.app/
 
 Run the standalone Streamlit application locally:
 
