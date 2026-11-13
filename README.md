@@ -18,7 +18,7 @@ The live interactive application is deployed on Streamlit Community Cloud and ru
 
 ## 📌 Project Overview
 
-**SteelSight** is an industrial-grade computer vision system engineered to detect, segment, and quantify surface defects on continuous rolled sheet steel in real time.
+**SteelSight** is an industrial-grade computer vision system engineered to detect, segment, and quantify surface defects on continuous rolled sheet steel in real time. 
 
 In modern metallurgical manufacturing, rolled steel strips move across production lines at high velocities. Surface anomalies—such as pitting, scratches, inclusions, and rolling cracks—must be rapidly isolated before coil winding and downstream fabrication. SteelSight deploys semantic segmentation using a deep convolutional neural network:
 
@@ -254,5 +254,5 @@ SteelSight is natively configured for single-click deployment on **Streamlit Com
 
 ## 📄 License & Attribution
 
-This project is open-source under the [MIT License](LICENSE).
+This project is open-source under the [MIT License](LICENSE).  
 Benchmark dataset annotations derived from the [Severstal Steel Defect Detection](https://www.kaggle.com/c/severstal-steel-defect-detection) competition.
